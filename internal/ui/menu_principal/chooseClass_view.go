@@ -20,18 +20,21 @@ func InitialClassMenu() tea.Model {
 				Hp: 200,
 				Atk: 15,
 				Def: 10,
+				Icon: "⚔️",
 			},
 			{
 				Name: "Mago",
 				Hp: 100,
 				Atk: 25,
 				Def: 5,
+				Icon: "🧙‍♂️",
 			},
 			{
 				Name: "Arqueiro",
 				Hp: 150,
 				Atk: 20,
 				Def: 2,
+				Icon: "🏹",
 			},
 		},
 	}	
