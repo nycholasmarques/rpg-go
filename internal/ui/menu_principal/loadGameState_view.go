@@ -1,10 +1,10 @@
 package menu_principal
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/nycholasmarques/rpg-go/internal/game"
+	"github.com/nycholasmarques/rpg-go/internal/game/exploration"
 )
 
 type menuLoadViewModel struct{
@@ -29,7 +29,11 @@ func (m menuLoadViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			case "enter":
 				gameState := game.LoadSave(m.choices[m.cursor])
-				fmt.Println(gameState)
+				ebiten.SetWindowSize(640, 480)
+				ebiten.SetWindowTitle("Exploration map")
+				if err := ebiten.RunGame(exploration.NewEbitenGameExploration(&gameState, exploration.ScreenMenu)); err != nil {
+					panic(err)
+				}
 			case "up":
 				if m.cursor > 0 { m.cursor-- }
 			case "down":

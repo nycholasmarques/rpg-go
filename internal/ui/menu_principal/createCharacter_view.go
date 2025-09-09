@@ -5,7 +5,9 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/nycholasmarques/rpg-go/internal/game"
+	"github.com/nycholasmarques/rpg-go/internal/game/exploration"
 	"github.com/nycholasmarques/rpg-go/internal/game/model"
 	"github.com/nycholasmarques/rpg-go/internal/pkg"
 )
@@ -65,8 +67,11 @@ func (m createCharacterMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			game.Save(gameState, "")
 			
-			// TODO: create func for render map 
-			
+			ebiten.SetWindowSize(640, 480)
+			ebiten.SetWindowTitle("Exploration map")
+			if err := ebiten.RunGame(exploration.NewEbitenGameExploration(&gameState, exploration.ScreenMenu)); err != nil {
+				panic(err)
+			}
 			return m, nil
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
