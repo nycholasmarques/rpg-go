@@ -3,9 +3,11 @@ package exploration
 import (
 	"fmt"
 	"image/color"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/lafriks/go-tiled"
 	"github.com/nycholasmarques/rpg-go/internal/game/model"
 )
 
@@ -26,9 +28,8 @@ const (
 	EntityTypeTreasure
 )
 
+const tileSize = 16
 const speed = 1.4
-const mapWidth = 50 * tileSize
-const mapHeight = 50 * tileSize
 
 type Game struct {
 	GameState *model.GameState
@@ -36,6 +37,11 @@ type Game struct {
 	PlayerImg *ebiten.Image
 	Objects   []Entity
 	Player    Entity
+
+	inDialog bool
+	DialogText []string
+	Map *ebiten.Image
+	GameMap   *tiled.Map
 }
 
 type Entity struct {
@@ -52,8 +58,7 @@ func (e *Entity) Rect() (float64, float64, float64, float64) {
 }
 
 func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Game {
-	LoadTiles()
-	InitMap()
+	m, gm := InitMap()
 
 	playerImg := ebiten.NewImage(16, 16)
 	playerImg.Fill(color.RGBA{255, 0, 0, 255})
@@ -69,52 +74,16 @@ func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Gam
 			},
 		},
 		{
-			X: 240, Y: 180, W: 16, H: 16,
-			Type: EntityTypeEnemy,
-			Color: color.RGBA{0, 0, 255, 255},
-			OnCollision: func(g *Game) {
-				g.Screen = ScreenBattle
-				fmt.Println("começou batalha com inimigo")
-			},
-		},
-		{
-			X: 80, Y: 80, W: 16, H: 16,
-			Type: EntityTypeHouse,
-			Color: color.RGBA{0, 0, 200, 200},
-			OnCollision: func(g *Game) {
-				fmt.Println("entrou na casa")
-			},
-		},
-		{
-			X: 120, Y: 80, W: 16, H: 16,
-			Type: EntityTypeHouse,
-			Color: color.RGBA{0, 0, 200, 200},
-			OnCollision: func(g *Game) {
-				fmt.Println("entrou na casa")
-			},
-		},
-		{
 			X: 100, Y: 100, W: 16, H: 16,
 			Type: EntityTypeNPC,
 			Color: color.RGBA{0, 0, 150, 150},
 			OnCollision: func(g *Game) {
-				fmt.Println("dialogo com npc: Bem-vindo ao vilarejo!")
-			},
-		},
-		{
-			X: 90, Y: 120, W: 16, H: 16,
-			Type: EntityTypeNPC,
-			Color: color.RGBA{0, 0, 150, 150},
-			OnCollision: func(g *Game) {
-				fmt.Println("dialogo com npc: Cuidado na floresta!")
-			},
-		},
-		{
-			X: 400, Y: 400, W: 16, H: 16,
-			Type: EntityTypeTreasure,
-			Color: color.RGBA{255, 215, 0, 255},
-			OnCollision: func(g *Game) {
-				fmt.Println("encontrou um tesouro!")
+				g.inDialog = true
+				g.DialogText = []string{
+					"Olá my friend, vi que tem monstros javascript por ai...",
+					"eu vi eles na parte de baixo do mapa",
+					"...",
+				}
 			},
 		},
 	}
@@ -136,8 +105,12 @@ func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Gam
 			H: 16,
 		},
 		Objects: objects,
+		Map: m,
+		GameMap: gm,
 	}
 }
+
+var countDialogNPC = 0
 
 func (g *Game) Update() error {
 	switch g.Screen {
@@ -146,6 +119,23 @@ func (g *Game) Update() error {
 			g.Screen = ScreenExploration
 		}
 	case ScreenExploration:
+		if g.inDialog {
+			countDialog := len(g.DialogText)
+			if ebiten.IsKeyPressed(ebiten.KeyEnter) || ebiten.IsKeyPressed(ebiten.KeySpace) {
+				time.Sleep(time.Second * 2)
+				if countDialogNPC != countDialog {
+					countDialogNPC++
+				}
+				if countDialog == countDialogNPC {
+					g.inDialog = false
+					g.DialogText = []string{}
+					countDialogNPC = 0
+					g.GameState.PosX = g.GameState.PosX - 2
+					g.GameState.PosY = g.GameState.PosY - 2
+				}
+			}
+			return nil
+		}
 		dx, dy := 0.0, 0.0
 		if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
 			dx = -speed
@@ -169,11 +159,16 @@ func (g *Game) Update() error {
 		newY := g.GameState.PosY + dy
 		tileX := int(newX / float64(tileSize))
 		tileY := int(newY / float64(tileSize))
-		if tileX >= 0 && tileX < len(worldMap[0]) && tileY >= 0 && tileY < len(worldMap) {
-				if worldMap[tileY][tileX] != TILE_BLUE_AQUA && worldMap[tileY][tileX] != TILE_PINE_TREE {
+
+		// TODO: change to tiled colision
+		if tileX >= 0 && tileX < g.GameMap.Width && tileY >= 0 && tileY < g.GameMap.Height {
+				layer := g.GameMap.Layers[0]
+				tile := layer.Tiles[tileY*g.GameMap.Width + tileX]
+				if tile != nil {
 						g.GameState.PosX = newX
 						g.GameState.PosY = newY
 				}
+
 		}
 	}
 
@@ -202,35 +197,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		camX := g.Player.X - float64(screenW)/2
 		camY := g.Player.Y - float64(screenH)/2
 
-		startX := int(camX/float64(tileSize)) - 1
-		startY := int(camY/float64(tileSize)) - 1
-		endX := startX + int(float64(screenW)/float64(tileSize)) + 2
-		endY := startY + int(float64(screenH)/float64(tileSize)) + 2
-
-		if startX < 0 {
-			startX = 0
-		}
-		if startY < 0 {
-			startY = 0
-		}
-		if endX > len(worldMap[0]) {
-			endX = len(worldMap[0])
-		}
-		if endY > len(worldMap) {
-			endY = len(worldMap)
-		}
-
-		for y := startY; y < endY; y++ {
-			for x := startX; x < endX; x++ {
-				tileIndex := worldMap[y][x]
-				if tileIndex < 0 || tileIndex >= len(tiles) {
-					continue
-				}
-				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(float64(x*tileSize)-camX, float64(y*tileSize)-camY)
-				screen.DrawImage(tiles[tileIndex], op)
-			}
-		}
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(-camX, -camY)
+		screen.DrawImage(g.Map, op)
 
 		opts := &ebiten.DrawImageOptions{}
 		opts.GeoM.Translate(float64(screenW)/2, float64(screenH)/2)
@@ -241,6 +210,25 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			o.GeoM.Translate(obj.X-camX, obj.Y-camY)
 			screen.DrawImage(obj.Sprite, o)
 		}
+
+		if g.inDialog {
+    dialogBoxHeight := 60
+    dialogBox := ebiten.NewImage(screenW, dialogBoxHeight)
+    dialogBox.Fill(color.RGBA{0, 0, 0, 200})
+
+    opts := &ebiten.DrawImageOptions{}
+    opts.GeoM.Translate(0, float64(screenH-dialogBoxHeight))
+    screen.DrawImage(dialogBox, opts)
+
+    if countDialogNPC < len(g.DialogText) {
+        ebitenutil.DebugPrintAt(screen,
+            g.DialogText[countDialogNPC],
+            10,
+            screenH-dialogBoxHeight+10,
+        )
+    }
+}
+
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("explore | FPS: %.2f TPS: %.2f", ebiten.ActualFPS(), ebiten.ActualTPS()))
 	}
