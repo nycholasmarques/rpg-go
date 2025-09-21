@@ -38,10 +38,10 @@ type Game struct {
 	Objects   []Entity
 	Player    Entity
 
-	inDialog bool
+	inDialog   bool
 	DialogText []string
-	Map *ebiten.Image
-	GameMap   *tiled.Map
+	Map        *ebiten.Image
+	GameMap    *tiled.Map
 }
 
 type Entity struct {
@@ -66,7 +66,7 @@ func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Gam
 	objects := []Entity{
 		{
 			X: 200, Y: 200, W: 16, H: 16,
-			Type: EntityTypeEnemy,
+			Type:  EntityTypeEnemy,
 			Color: color.RGBA{0, 0, 255, 255},
 			OnCollision: func(g *Game) {
 				g.Screen = ScreenBattle
@@ -75,14 +75,14 @@ func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Gam
 		},
 		{
 			X: 100, Y: 100, W: 16, H: 16,
-			Type: EntityTypeNPC,
+			Type:  EntityTypeNPC,
 			Color: color.RGBA{0, 0, 150, 150},
 			OnCollision: func(g *Game) {
 				g.inDialog = true
 				g.DialogText = []string{
 					"Olá my friend, vi que tem monstros javascript por ai...",
-					"eu vi eles na parte de baixo do mapa",
-					"...",
+					"Eu vi eles na parte de baixo do mapa.",
+					"... cuidado!",
 				}
 			},
 		},
@@ -105,12 +105,15 @@ func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Gam
 			H: 16,
 		},
 		Objects: objects,
-		Map: m,
+		Map:     m,
 		GameMap: gm,
 	}
 }
 
 var countDialogNPC = 0
+var lastDialogAdvance time.Time
+
+const dialogCooldown = 200 * time.Millisecond
 
 func (g *Game) Update() error {
 	switch g.Screen {
@@ -120,13 +123,15 @@ func (g *Game) Update() error {
 		}
 	case ScreenExploration:
 		if g.inDialog {
-			countDialog := len(g.DialogText)
-			if ebiten.IsKeyPressed(ebiten.KeyEnter) || ebiten.IsKeyPressed(ebiten.KeySpace) {
-				time.Sleep(time.Second * 2)
-				if countDialogNPC != countDialog {
+			if (ebiten.IsKeyPressed(ebiten.KeyEnter) || ebiten.IsKeyPressed(ebiten.KeySpace)) &&
+				time.Since(lastDialogAdvance) > dialogCooldown {
+
+				lastDialogAdvance = time.Now()
+				countDialog := len(g.DialogText)
+
+				if countDialogNPC < countDialog-1 {
 					countDialogNPC++
-				}
-				if countDialog == countDialogNPC {
+				} else {
 					g.inDialog = false
 					g.DialogText = []string{}
 					countDialogNPC = 0
@@ -136,6 +141,7 @@ func (g *Game) Update() error {
 			}
 			return nil
 		}
+
 		dx, dy := 0.0, 0.0
 		if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
 			dx = -speed
@@ -157,18 +163,16 @@ func (g *Game) Update() error {
 
 		newX := g.GameState.PosX + dx
 		newY := g.GameState.PosY + dy
-		tileX := int(newX / float64(tileSize))
-		tileY := int(newY / float64(tileSize))
 
-		// TODO: change to tiled colision
-		if tileX >= 0 && tileX < g.GameMap.Width && tileY >= 0 && tileY < g.GameMap.Height {
-				layer := g.GameMap.Layers[0]
-				tile := layer.Tiles[tileY*g.GameMap.Width + tileX]
-				if tile != nil {
-						g.GameState.PosX = newX
-						g.GameState.PosY = newY
-				}
+		playerW, playerH := g.Player.W, g.Player.H
 
+		if !g.IsSollidAt(newX, newY) &&
+			!g.IsSollidAt(newX+playerW-1, newY) &&
+			!g.IsSollidAt(newX, newY+playerH-1) &&
+			!g.IsSollidAt(newX+playerW-1, newY+playerH-1) {
+
+			g.GameState.PosX = newX
+			g.GameState.PosY = newY
 		}
 	}
 
@@ -212,28 +216,92 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 
 		if g.inDialog {
-    dialogBoxHeight := 60
-    dialogBox := ebiten.NewImage(screenW, dialogBoxHeight)
-    dialogBox.Fill(color.RGBA{0, 0, 0, 200})
+			dialogBoxHeight := 80
+			dialogBox := ebiten.NewImage(screenW, dialogBoxHeight)
+			dialogBox.Fill(color.RGBA{0, 0, 0, 180})
 
-    opts := &ebiten.DrawImageOptions{}
-    opts.GeoM.Translate(0, float64(screenH-dialogBoxHeight))
-    screen.DrawImage(dialogBox, opts)
+			opts := &ebiten.DrawImageOptions{}
+			opts.GeoM.Translate(0, float64(screenH-dialogBoxHeight))
+			screen.DrawImage(dialogBox, opts)
 
-    if countDialogNPC < len(g.DialogText) {
-        ebitenutil.DebugPrintAt(screen,
-            g.DialogText[countDialogNPC],
-            10,
-            screenH-dialogBoxHeight+10,
-        )
-    }
-}
+			ebitenutil.DrawRect(screen, 0, float64(screenH-dialogBoxHeight), float64(screenW), 2, color.White)
+			ebitenutil.DrawRect(screen, 0, float64(screenH-2), float64(screenW), 2, color.White)
 
+			text := g.DialogText[countDialogNPC]
+			maxWidth := screenW - 20
+			lines := wrapText(text, maxWidth/8)
+			for i, line := range lines {
+				ebitenutil.DebugPrintAt(screen, line, 10, screenH-dialogBoxHeight+10+i*15)
+			}
 
-		ebitenutil.DebugPrint(screen, fmt.Sprintf("explore | FPS: %.2f TPS: %.2f", ebiten.ActualFPS(), ebiten.ActualTPS()))
+			if time.Now().Unix()%2 == 0 {
+				ebitenutil.DebugPrintAt(screen, "▶", screenW-20, screenH-20)
+			}
+		}
+
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("explore | FPS: %.2f TPS: %.2f",
+			ebiten.ActualFPS(), ebiten.ActualTPS()))
 	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	return 320, 240
+}
+
+func (g *Game) IsSollidAt(x, y float64) bool {
+	tileX := int(x / float64(tileSize))
+	tileY := int(y / float64(tileSize))
+
+	if tileX < 0 || tileY < 0 || tileX >= g.GameMap.Width || tileY >= g.GameMap.Height {
+		return true
+	}
+
+	layer := g.GameMap.Layers[0]
+	tile := layer.Tiles[tileY*g.GameMap.Width+tileX]
+	if tile == nil {
+		return false
+	}
+
+	tsTile, _ := tile.Tileset.GetTilesetTile(tile.ID)
+	if tsTile == nil {
+		return false
+	}
+
+	for _, og := range tsTile.ObjectGroups {
+		for _, obj := range og.Objects {
+			rectX := float64(tileX*tileSize) + obj.X
+			rectY := float64(tileY*tileSize) + obj.Y
+			rectW := obj.Width
+			rectH := obj.Height
+
+			if x >= rectX && x < rectX+rectW &&
+				y >= rectY && y < rectY+rectH {
+				return true
+			}
+		}
+	}
+	
+	if tsTile.Properties.GetBool("collision") {
+		return true
+	}
+
+	return false
+}
+
+func wrapText(text string, maxChars int) []string {
+	runes := []rune(text)
+	var lines []string
+	var line []rune
+
+	for _, r := range runes {
+		line = append(line, r)
+		if len(line) >= maxChars && r == ' ' {
+			lines = append(lines, string(line))
+			line = []rune{}
+		}
+	}
+	if len(line) > 0 {
+		lines = append(lines, string(line))
+	}
+	return lines
 }
