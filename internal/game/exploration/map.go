@@ -9,20 +9,20 @@ import (
 const mapPath = "assets/map/map-1.tmx"
 
 func InitMap() (*ebiten.Image, *tiled.Map) {
-    gameMap, err := tiled.LoadFile(mapPath)
-    if err != nil {
-        panic(err)
-    }
+	gameMap, err := tiled.LoadFile(mapPath)
+	if err != nil {
+		panic(err)
+	}
 
-    renderer, err := render.NewRenderer(gameMap)
-    if err != nil {
-        panic(err)
-    }
+	renderer, err := render.NewRenderer(gameMap)
+	if err != nil {
+		panic(err)
+	}
 
-    if err := renderer.RenderVisibleLayers(); err != nil {
-        panic(err)
-    }
+	if err := renderer.RenderVisibleLayers(); err != nil {
+		panic(err)
+	}
 
-    m := ebiten.NewImageFromImage(renderer.Result)
-    return m, gameMap
+	m := ebiten.NewImageFromImage(renderer.Result)
+	return m, gameMap
 }

@@ -13,7 +13,7 @@ func CreateRandomFile(localPath string, filename string) (string, error) {
 
 	for _, v := range files {
 		if v.Name() == filename {
-			newFileName := filename + strconv.Itoa(len(files) + 1)
+			newFileName := filename + strconv.Itoa(len(files)+1)
 			return newFileName, nil
 		}
 	}

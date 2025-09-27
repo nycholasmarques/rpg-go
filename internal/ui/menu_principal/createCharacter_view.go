@@ -14,14 +14,13 @@ import (
 
 type createCharacterMenu struct {
 	textInput textinput.Model
-	class model.Class
-	err error
+	class     model.Class
+	err       error
 }
 
 type (
 	errMsg error
 )
-
 
 func InitialCreateCharacterMenu(class model.Class) tea.Model {
 	ti := textinput.New()
@@ -31,9 +30,9 @@ func InitialCreateCharacterMenu(class model.Class) tea.Model {
 	ti.Width = 20
 	return createCharacterMenu{
 		textInput: ti,
-		class: class,
-		err: nil,
-	}	
+		class:     class,
+		err:       nil,
+	}
 }
 
 func (m createCharacterMenu) Init() tea.Cmd {
@@ -53,20 +52,20 @@ func (m createCharacterMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			character := model.Character{
-				Name: m.textInput.Value(),
+				Name:  m.textInput.Value(),
 				Class: m.class,
 				Level: model.Level_1,
-				Hp: m.class.Hp,
-				Xp: 0,
-			} 
+				Hp:    m.class.Hp,
+				Xp:    0,
+			}
 			gameState := model.GameState{
-				Character: character,
-				PosX: 0,
-				PosY: 0,
+				Character:     character,
+				PosX:          0,
+				PosY:          0,
 				Filename_save: fileForSave,
 			}
 			game.Save(gameState, "")
-			
+
 			ebiten.SetWindowSize(640, 480)
 			ebiten.SetWindowTitle("Exploration map")
 			if err := ebiten.RunGame(exploration.NewEbitenGameExploration(&gameState, exploration.ScreenMenu)); err != nil {

@@ -68,8 +68,8 @@ func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Gam
 	initialX := 6.0
 	initialY := 80.0
 
-	  gs.PosX = initialX
-    gs.PosY = initialY
+	gs.PosX = initialX
+	gs.PosY = initialY
 
 	objects := []Entity{
 		{
@@ -260,42 +260,42 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func (g *Game) IsSollidAt(x, y float64) bool {
-    tileX := int(x / float64(tileSize))
-    tileY := int(y / float64(tileSize))
+	tileX := int(x / float64(tileSize))
+	tileY := int(y / float64(tileSize))
 
-    if tileX < 0 || tileY < 0 || tileX >= g.GameMap.Width || tileY >= g.GameMap.Height {
-        return true
-    }
+	if tileX < 0 || tileY < 0 || tileX >= g.GameMap.Width || tileY >= g.GameMap.Height {
+		return true
+	}
 
-    // percorre todas as layers
-    for _, layer := range g.GameMap.Layers {
-        if !layer.Visible {
-            continue
-        }
-        if len(layer.Tiles) == 0 {
-            continue
-        }
+	// percorre todas as layers
+	for _, layer := range g.GameMap.Layers {
+		if !layer.Visible {
+			continue
+		}
+		if len(layer.Tiles) == 0 {
+			continue
+		}
 
-        tileIndex := tileY*g.GameMap.Width + tileX
-        if tileIndex >= len(layer.Tiles) {
-            continue
-        }
+		tileIndex := tileY*g.GameMap.Width + tileX
+		if tileIndex >= len(layer.Tiles) {
+			continue
+		}
 
-        tile := layer.Tiles[tileIndex]
-        if tile == nil || tile.Tileset == nil {
-            continue
-        }
+		tile := layer.Tiles[tileIndex]
+		if tile == nil || tile.Tileset == nil {
+			continue
+		}
 
-        tsTile, _ := tile.Tileset.GetTilesetTile(tile.ID)
-        if tsTile == nil {
-            continue
-        }
+		tsTile, _ := tile.Tileset.GetTilesetTile(tile.ID)
+		if tsTile == nil {
+			continue
+		}
 
-        if tsTile.Properties.GetBool("collision") {
-            return true
-        }
-    }
-    return false
+		if tsTile.Properties.GetBool("collision") {
+			return true
+		}
+	}
+	return false
 }
 
 func wrapText(text string, maxChars int) []string {

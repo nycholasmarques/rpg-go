@@ -7,8 +7,8 @@ import (
 	"github.com/nycholasmarques/rpg-go/internal/game/model"
 )
 
-type classModel struct{
-	cursor int
+type classModel struct {
+	cursor  int
 	choices []model.Class
 }
 
@@ -17,27 +17,27 @@ func InitialClassMenu() tea.Model {
 		choices: []model.Class{
 			{
 				Name: "Guerreiro",
-				Hp: 200,
-				Atk: 15,
-				Def: 10,
+				Hp:   200,
+				Atk:  15,
+				Def:  10,
 				Icon: "⚔️",
 			},
 			{
 				Name: "Mago",
-				Hp: 100,
-				Atk: 25,
-				Def: 5,
+				Hp:   100,
+				Atk:  25,
+				Def:  5,
 				Icon: "🧙‍♂️",
 			},
 			{
 				Name: "Arqueiro",
-				Hp: 150,
-				Atk: 20,
-				Def: 2,
+				Hp:   150,
+				Atk:  20,
+				Def:  2,
 				Icon: "🏹",
 			},
 		},
-	}	
+	}
 }
 
 func (m classModel) Init() tea.Cmd { return nil }
@@ -46,25 +46,29 @@ func (m classModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-			case "ctrl+c", "q":
-				return m, tea.Quit
-			case "enter":
-				switch m.cursor {
-				case 0:
-					return InitialCreateCharacterMenu(m.choices[0]), nil
-				case 1:
-					return InitialCreateCharacterMenu(m.choices[1]), nil
-				case 2:
-					return InitialCreateCharacterMenu(m.choices[2]), nil
-				case 3:
-					return InitialDifficultyMenu(), nil
-				}
-			case "up":
-				if m.cursor > 0 { m.cursor-- }
-			case "down":
-				if m.cursor < len(m.choices)-1 { m.cursor++ }
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		case "enter":
+			switch m.cursor {
+			case 0:
+				return InitialCreateCharacterMenu(m.choices[0]), nil
+			case 1:
+				return InitialCreateCharacterMenu(m.choices[1]), nil
+			case 2:
+				return InitialCreateCharacterMenu(m.choices[2]), nil
+			case 3:
+				return InitialDifficultyMenu(), nil
+			}
+		case "up":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "down":
+			if m.cursor < len(m.choices)-1 {
+				m.cursor++
+			}
 		}
-	}	
+	}
 	return m, nil
 }
 
