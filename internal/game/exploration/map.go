@@ -19,7 +19,9 @@ func InitMap() (*ebiten.Image, *tiled.Map) {
         panic(err)
     }
 
-    _ = renderer.RenderLayer(0)
+    if err := renderer.RenderVisibleLayers(); err != nil {
+        panic(err)
+    }
 
     m := ebiten.NewImageFromImage(renderer.Result)
     return m, gameMap

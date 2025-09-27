@@ -7,6 +7,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/lafriks/go-tiled"
 	"github.com/nycholasmarques/rpg-go/internal/game/model"
 )
@@ -42,6 +43,7 @@ type Game struct {
 	DialogText []string
 	Map        *ebiten.Image
 	GameMap    *tiled.Map
+	SeeHud     bool
 }
 
 type Entity struct {
@@ -62,6 +64,12 @@ func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Gam
 
 	playerImg := ebiten.NewImage(16, 16)
 	playerImg.Fill(color.RGBA{255, 0, 0, 255})
+
+	initialX := 6.0
+	initialY := 80.0
+
+	  gs.PosX = initialX
+    gs.PosY = initialY
 
 	objects := []Entity{
 		{
@@ -107,6 +115,7 @@ func NewEbitenGameExploration(gs *model.GameState, screen GameActualScreen) *Gam
 		Objects: objects,
 		Map:     m,
 		GameMap: gm,
+		SeeHud:  true,
 	}
 }
 
@@ -239,6 +248,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			}
 		}
 
+		g.DrawHUD(screen)
+
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("explore | FPS: %.2f TPS: %.2f",
 			ebiten.ActualFPS(), ebiten.ActualTPS()))
 	}
@@ -249,43 +260,42 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func (g *Game) IsSollidAt(x, y float64) bool {
-	tileX := int(x / float64(tileSize))
-	tileY := int(y / float64(tileSize))
+    tileX := int(x / float64(tileSize))
+    tileY := int(y / float64(tileSize))
 
-	if tileX < 0 || tileY < 0 || tileX >= g.GameMap.Width || tileY >= g.GameMap.Height {
-		return true
-	}
+    if tileX < 0 || tileY < 0 || tileX >= g.GameMap.Width || tileY >= g.GameMap.Height {
+        return true
+    }
 
-	layer := g.GameMap.Layers[0]
-	tile := layer.Tiles[tileY*g.GameMap.Width+tileX]
-	if tile == nil {
-		return false
-	}
+    // percorre todas as layers
+    for _, layer := range g.GameMap.Layers {
+        if !layer.Visible {
+            continue
+        }
+        if len(layer.Tiles) == 0 {
+            continue
+        }
 
-	tsTile, _ := tile.Tileset.GetTilesetTile(tile.ID)
-	if tsTile == nil {
-		return false
-	}
+        tileIndex := tileY*g.GameMap.Width + tileX
+        if tileIndex >= len(layer.Tiles) {
+            continue
+        }
 
-	for _, og := range tsTile.ObjectGroups {
-		for _, obj := range og.Objects {
-			rectX := float64(tileX*tileSize) + obj.X
-			rectY := float64(tileY*tileSize) + obj.Y
-			rectW := obj.Width
-			rectH := obj.Height
+        tile := layer.Tiles[tileIndex]
+        if tile == nil || tile.Tileset == nil {
+            continue
+        }
 
-			if x >= rectX && x < rectX+rectW &&
-				y >= rectY && y < rectY+rectH {
-				return true
-			}
-		}
-	}
-	
-	if tsTile.Properties.GetBool("collision") {
-		return true
-	}
+        tsTile, _ := tile.Tileset.GetTilesetTile(tile.ID)
+        if tsTile == nil {
+            continue
+        }
 
-	return false
+        if tsTile.Properties.GetBool("collision") {
+            return true
+        }
+    }
+    return false
 }
 
 func wrapText(text string, maxChars int) []string {
@@ -304,4 +314,59 @@ func wrapText(text string, maxChars int) []string {
 		lines = append(lines, string(line))
 	}
 	return lines
+}
+
+func (g *Game) DrawHUD(screen *ebiten.Image) {
+	if !g.SeeHud {
+		return
+	}
+
+	screenW, screenH := g.Layout(0, 0)
+
+	hudW := 110
+	hudH := 50
+	margin := 10
+
+	vector.DrawFilledRect(screen,
+		float32(screenW-hudW-margin),
+		float32(screenH-hudH-margin),
+		float32(hudW),
+		float32(hudH),
+		color.RGBA{0, 0, 0, 180}, false)
+
+	offsetX := screenW - hudW - margin + 10
+	offsetY := screenH - hudH - margin + 10
+
+	hp := g.GameState.Character.Hp
+	if hp < 0 {
+		hp = 0
+	}
+	if hp > 100 {
+		hp = 100
+	}
+	hpPerc := float32(hp) / 100
+
+	drawBar(screen, float32(offsetX), float32(offsetY), 50, 6,
+		hpPerc, color.RGBA{50, 0, 0, 200}, color.RGBA{200, 0, 0, 255})
+
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("HP %d", hp), offsetX+55, offsetY-2)
+
+	xp := g.GameState.Character.Xp
+	if xp < 0 {
+		xp = 0
+	}
+	if xp > 100 {
+		xp = 100
+	}
+	xpPerc := float32(xp) / 100
+
+	drawBar(screen, float32(offsetX), float32(offsetY+20), 50, 6,
+		xpPerc, color.RGBA{20, 20, 50, 200}, color.RGBA{50, 50, 200, 255})
+
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("XP %d", xp), offsetX+55, offsetY+18)
+}
+
+func drawBar(screen *ebiten.Image, x, y, w, h, perc float32, bg, fg color.Color) {
+	vector.DrawFilledRect(screen, x, y, w, h, bg, false)
+	vector.DrawFilledRect(screen, x, y, w*perc, h, fg, false)
 }
