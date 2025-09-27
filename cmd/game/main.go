@@ -6,9 +6,9 @@ import (
 )
 
 func main() {
-		p := tea.NewProgram(menu_principal.InitialMenu(), tea.WithAltScreen())
-		_, err := p.Run()
-		if err != nil {
-			panic(err)
-		}
+	p := tea.NewProgram(menu_principal.InitialMenu(), tea.WithAltScreen())
+	_, err := p.Run()
+	if err != nil {
+		panic(err)
+	}
 }

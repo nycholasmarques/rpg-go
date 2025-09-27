@@ -19,7 +19,7 @@ func Save(gamestate model.GameState, filename string) {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	if _, err = os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		err = os.Mkdir(path, os.ModePerm)
 		if err != nil {
@@ -28,12 +28,12 @@ func Save(gamestate model.GameState, filename string) {
 	}
 
 	if gamestate.Filename_save == "" && filename != "" {
-		err = os.WriteFile(path + "/" + filename, data, 0644)
+		err = os.WriteFile(path+"/"+filename, data, 0644)
 		if err != nil {
 			panic(err)
 		}
 	}
-	err = os.WriteFile(path + "/" + gamestate.Filename_save, data, 0644)
+	err = os.WriteFile(path+"/"+gamestate.Filename_save, data, 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +55,7 @@ func LoadSave(filename string) model.GameState {
 }
 
 func DeleteSave(filename string) error {
-	fileInfo, err := os.Stat(path + "/" + filename) 
+	fileInfo, err := os.Stat(path + "/" + filename)
 	if errors.Is(err, os.ErrNotExist) {
 		return os.ErrNotExist
 	}
@@ -77,4 +77,3 @@ func PrintSaves() []string {
 	}
 	return filesForArray
 }
-
